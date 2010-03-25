@@ -1,0 +1,8 @@
+[Server]
+Port=5678
+ConnectionQueueSize=1
+
+[Applications]
+game=TimeApplication
+game2=TimeApplication
+tictactoe = TicTacToeManagerApplication
