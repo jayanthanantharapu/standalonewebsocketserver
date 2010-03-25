@@ -5,171 +5,6 @@
 <script language="javascript" src="./cake.js"></script>
 
 <script type="text/javascript">
-	Explosion = Klass(CanvasNode, {
-      catchMouse : false,
-      cursor : 'default',
-
-      circleGradient : new Gradient({
-        type : 'radial',
-        endRadius : 15,
-        colorStops : [
-          [ 0.0, "rgba(190,105,90,1)" ],
-          [ 0.25, "rgba(5,30,80,0.4)" ],
-          [ 1, "rgba(10,0,40,0)" ]
-        ]
-      }),
-
-      initialize : function(size, life, gradient) {
-        CanvasNode.initialize.call(this)
-        
-		var main = new Circle(15)
-		if(gradient)
-		{
-			main.fill = gradient
-		}
-		else
-		{
-			main.fill = this.circleGradient
-		}
-        main.compositeOperation = 'lighter'
-
-		this.life = life
-        this.zIndex = 10
-        this.main = main
-        this.append(main)
-        this.size = size
-        this.addFrameListener(this.blowup)
-		this.after(this.life, this.fadeOut)
-      },
-
-      blowup : function(t, dt) 
-	  {
-        if (this.startTime == null)
-          this.startTime = t
-        var elapsed = Math.min(this.life, t - this.startTime)
-        var fac =0.005966
-        this.main.scale = 1 + this.size * Math.abs(Math.sin(elapsed * fac))
-      },
-
-	  fadeOut: function(t,dt)
-	  {
-		  this.startTime = null
-		  this.removeFrameListener(this.blowup)
-  	      this.after(this.life*20, this.removeSelf)
-	  }
-    })
-
-
-	Board = Klass(CanvasNode, 
-	{
-		initialize : function(posX, posY, vTiles, hTiles, tileW, tileH, tileName) 
-		{
-			this.x = posX
-			this.y = posY
-			CanvasNode.initialize.call(this)
-
-			this.TileW = tileW
-			this.HalfTileW = tileW/2
-
-			this.TileH = tileH
-			this.HalfTileH = tileH/2
-
-			this.VTiles = vTiles
-			this.HTiles = hTiles
-
-			this.Width = hTiles * tileW
-			this.Height = vTiles * tileH
-
-			this.TileName = tileName
-
-			this.createTiles()
-		},
-
-		createTiles: function()
-		{
-
-			for(y = 0; y < this.VTiles; y++)
-			{
-				for(x = 0; x < this.HTiles; x++)
-				{
-					left = this.x + (x+y) * this.HalfTileW
-					top = this.y + ( (this.VTiles - 1) - (x-y)) * this.HalfTileH
-
-					tile = new Tile(this.TileName)
-					tile.x = left
-					tile.y = top
-					this.append(tile)
-				}
-			}
-			
-		}
-	})
-	
-
-	Tile = Klass(ImageNode, 
-	{
-		initialize : function(imgSrc) 
-		{
-			var img = new Image()
-			img.src = imgSrc
-			ImageNode.initialize.call(this, img)
-		}
-	})
-
-	IsoGrid = Klass(Drawable, 
-	{
-		initialize : function(posX, posY, vTiles, hTiles, tileW, tileH ) 
-		{
-			Drawable.initialize.call(this)
-
-			this.x = posX
-			this.y = posY
-
-			this.TileW = tileW
-			this.HalfTileW = tileW/2
-
-			this.TileH = tileH
-			this.HalfTileH = tileH/2
-
-			this.VTiles = vTiles
-			this.HTiles = hTiles
-
-			this.Width = hTiles * tileW
-			this.Height = vTiles * tileH
-
-			this.createLines()
-
-		},
-
-		createLines: function()
-		{
-			halfHeight = (this.y + this.Height/2)
-
-			for(x = 0; x < this.HTiles + 1; x++)
-			{
-				startX = this.x  + (x * this.HalfTileW)
-				startY = halfHeight + (x * this.HalfTileH)
-				endX = startX + this.VTiles * this.HalfTileW
-				endY = startY - this.VTiles * this.HalfTileH
-				
-				line = new Line(startX, startY, endX, endY)
-				this.append(line)
-			}
-
-			for(x = 0; x < this.VTiles + 1; x++)
-			{
-				startX = this.x  + (x * this.HalfTileW)
-				startY = halfHeight - (x * this.HalfTileH)
-				endX = startX + this.HTiles * this.HalfTileW
-				endY = startY + this.HTiles * this.HalfTileH
-				
-				line = new Line(startX, startY, endX, endY)
-				this.append(line)
-			}
-			
-		}
-	})
-
 	TTTBoard = Klass(Drawable, 
 	{
 		initialize : function(posX, posY, tileW, tileH ) 
@@ -357,47 +192,44 @@
 		function() 
 		{
 			canvas = new Canvas($('canvasDiv'), 800, 600)
-
-			//canvas.append( new Board(150, 100, 4, 4, 80, 40, "tile2.gif") )
-			//canvas.append( new IsoGrid(25,25, 4, 4, 80, 60) )
-			//canvas.append( new IsoGrid(150,100, 4, 4, 80, 40) )
 			tttBoard = new TTTBoard(20,20, 100, 100)
 			canvas.append( tttBoard )
 
 			webSocket = new WebSocket("ws://localhost:5678/tictactoe");
-	        	webSocket.onopen = 
+	        
+			webSocket.onopen = 
 			function(e) 
 			{ 
 				callbacks.log('Connected'); 
 				this.send("login|user|user")
 			}
 
-		    	webSocket.onclose = 
+			webSocket.onclose = 
 			function(e) 
 			{ 
 				callbacks.log('Closed')
 			}
 
 			webSocket.onmessage = 
-				function(e) 
-				{
-					parts = e.data.split('|')
+			function(e) 
+			{
+				parts = e.data.split('|')
 
-					if(parts.length > 0)
+				if(parts.length > 0)
+				{
+					if(callbacks[parts[0]] != undefined)
 					{
-						if(callbacks[parts[0]] != undefined)
+						if(parts.length > 1)
 						{
-							if(parts.length > 1)
-							{
-								callbacks[parts[0]]( parts.slice(1) )
-							}
-							else
-							{
-								callbacks[parts[0]]()							
-							}
+							callbacks[parts[0]]( parts.slice(1) )
+						}
+						else
+						{
+							callbacks[parts[0]]()							
 						}
 					}
 				}
+			}
 		}
 
 	Action_StartGame =
