@@ -1,17 +1,25 @@
 import socket
 import logging as log
-
-HANDSHAKE = '''
-HTTP/1.1 101 Web Socket Protocol Handshake\r
-Upgrade: WebSocket\r
-Connection: Upgrade\r
-WebSocket-Origin: %s\r
-WebSocket-Location: ws://%s\r
-WebSocket-Protocol: sample
-'''.strip() + '\r\n\r\n'
+import hashlib
+import struct
 
 STARTBYTE = '\x00'
 ENDBYTE = '\xff'
+
+HTTP_101_RESPONSE = 'HTTP/1.1 101 Web Socket Protocol Handshake\x0D\x0A'
+HTTP_UPGRADE = 'Upgrade: WebSocket\x0D\x0A'
+HTTP_CONNECTION = 'Connection: Upgrade\x0D\x0A'
+
+HTTP_ORIGIN = 'WebSocket-Origin: %s\x0D\x0A'
+HTTP_LOCATION = 'WebSocket-Location: ws://%s\x0D\x0A'
+HTTP_PROTOCOL = 'WebSocket-Protocol: sample\x0D\x0A'
+
+HTTP_SEC_ORIGIN = 'Sec-WebSocket-Origin: %s\x0D\x0A'
+HTTP_SEC_LOCATION = 'Sec-WebSocket-Location: ws://%s\x0D\x0A'
+HTTP_SEC_PROTOCOL = 'Sec-WebSocket-Protocol: sample\x0D\x0A'
+
+HTTP_CRLF = '\x0D\x0A'
+HTTP_CRLF_x2 = '\x0D\x0A\x0D\x0A'
 
 class WebSocket:
     def __init__(self, socket):
@@ -20,26 +28,47 @@ class WebSocket:
         self.ApplicationPath = '/'
         self.Host = None
         self.Origin = None
+
+        self.SecurityResponse = ''
+        self.WebSocketSecurityRequired = False
         
         try:
             httpHeader = self.Socket.recv(4096)
-            log.info(httpHeader)
+            print httpHeader
             self.ParseHttpHeader(httpHeader)
             
             if self.Origin != None and self.Host != None:
                 #WebSocket-Origin = Origin parameter of HTTP request
-                #WebSocket-Location = Host parameter of HTTP request
-                handshake = HANDSHAKE % (self.Origin, self.Host + self.ApplicationPath)
-                log.info("WebSocket sending handshake to client")
-                self.Socket.send(handshake)
-                log.info("WebSocket sent handshake:\r\n%s" % (handshake) )
+                #WebSocket-Location = Host + resource request parameters of HTTP request                    
+                log.info("WebSocket sending HTTP response to client")
+                if self.WebSocketSecurityRequired:
+                    self.Socket.send(HTTP_101_RESPONSE)
+                    self.Socket.send(HTTP_UPGRADE)
+                    self.Socket.send(HTTP_CONNECTION)
+                    self.Socket.send(HTTP_SEC_ORIGIN % self.Origin)                    
+                    self.Socket.send(HTTP_SEC_LOCATION % (self.Host + self.ApplicationPath))
+                    self.Socket.send(HTTP_SEC_PROTOCOL)
+                    self.Socket.send(HTTP_CRLF)
+                    self.Socket.send( self.SecurityResponse )
+                else:
+                    self.Socket.send(HTTP_101_RESPONSE)
+                    self.Socket.send(HTTP_UPGRADE)
+                    self.Socket.send(HTTP_CONNECTION)
+                    self.Socket.send(HTTP_ORIGIN % self.Origin)                    
+                    self.Socket.send(HTTP_LOCATION % (self.Host + self.ApplicationPath))
+                    self.Socket.send(HTTP_PROTOCOL)
+                    self.Socket.send(HTTP_CRLF_x2)
+                
             else:
                 log.info("WebSocket could not parse HTTP header")
                 raise Exception("WebSocket could not parse HTTP header")
-        except Exception:
+            
+        except Exception as ex:
             log.info("WebSocket could not complete the HTTP handshake to establish a web socket connection")
+            log.info(ex)
             self.Close()
-            raise Exception("WebSocket could not complete the HTTP handshake to establish a web socket connection")
+            raise ex
+            #raise Exception("WebSocket could not complete the HTTP handshake to establish a web socket connection")
 
     def ParseHttpHeader(self, header):
         appNameStartIndex = header.find("GET /")
@@ -67,6 +96,66 @@ class WebSocket:
                 self.Origin = origin
                 log.info("Origin requested by WebSocket connection: %s" % (origin))
 
+        #Web Socket Security protocol
+        securityKey1 = self._ExtractField(header, "Sec-WebSocket-Key1: ")
+        if securityKey1 != None:
+            log.info("Sec-Websocket present, need to create Web Socket security response")
+
+            self.WebSocketSecurityRequired = True
+            securityKey2 = self._ExtractField(header, "Sec-WebSocket-Key2: ")
+            securityCode = header[-8:] #Last 8 bytes (64 bits) not including the terminating HTTP \r\n's
+
+            print 'Security Request: ', securityCode
+            self.SecurityResponse = self._CreateSecurityResponse(securityKey1, securityKey2, securityCode)
+
+            log.info("Created security response!")
+    
+    def _ExtractField(self, header, name):
+        startIndex = header.find(name)
+        if startIndex != -1:
+            endIndex = header.find("\r", startIndex)
+            if endIndex != -1:
+                retVal = header[startIndex + len(name) : endIndex]
+
+                return retVal
+
+        return None
+
+    def _CreateSecurityResponse(self, key1, key2, code):
+        secKey1 = self._GetSecKeyValue(key1)
+        secKey2 = self._GetSecKeyValue(key2)
+
+        val = ""
+        val += struct.pack('>ii', secKey1, secKey2)
+        val += code
+        
+        response = hashlib.md5(val).digest()
+        
+        return response
+
+    def _GetSecKeyValue(self, key):
+        secKeyInts = '0'
+        spaceCount = 0
+        for char in key:
+            ordinal = ord(char)
+            if ordinal == 32:
+                spaceCount += 1
+            elif ordinal >= 48 and ordinal <= 57:
+                secKeyInts += char
+
+        secKeyInts = int(secKeyInts)
+        secKeyValue = 0
+        if spaceCount > 0:
+            secKeyValue = secKeyInts/spaceCount
+
+        print 'debug key: '
+        print key
+        print spaceCount
+        print secKeyInts
+        print secKeyValue
+        
+        return secKeyValue
+                
     def Send(self, msg):
         log.info(u'WebSocket sending data to client: %s' % (repr(msg)))
         self.Socket.send(STARTBYTE + str(msg) + ENDBYTE)

@@ -7,6 +7,7 @@ import uuid
 
 
 def Instantiate(appName='unknown'):
+    log.info("TicTacToeManagerApplication -- Instantiate")
     app = TicTacToeManagerApplication(appName)
     return app
 
@@ -46,6 +47,7 @@ class TicTacToeManagerApplication(Application):
                 
     def StartGame(self):
         game = Game(self)
+        log.info("TicTacToeManagerApplication starting game %s" % game.GUID)
         self.Games[game.GUID] = game
         return "gameGUID|" + game.GUID
 
@@ -73,7 +75,6 @@ class Game():
     def __init__(self, application):
         self.GUID = uuid.uuid4().hex
         self.Application = application
-        self.CreationTime = datetime.datetime.utcnow()
         self.Player1 = None
         self.Player2 = None
 
