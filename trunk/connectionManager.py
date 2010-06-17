@@ -42,10 +42,11 @@ class ConnectionManager:
                         
                 #Send data to ready connections for which we have data
                 for connection in write:
-                    if connection.Connected:
-                        connection.SendCommands()
-                    else:
-                         self.DeadConnections.append(connection)
+                    connection.SendCommands()
+                    connection.CheckTimeout()
+
+                    if not connection.Connected:
+                        self.DeadConnections.append(connection)
 
             #Clean up dead connections
             for connection in self.DeadConnections:

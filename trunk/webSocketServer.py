@@ -17,6 +17,7 @@ log.basicConfig(level=log.DEBUG, stream=sys.stderr)
 #The module must provide an Instantiate() method
 def InstantiateApplication(moduleName, *classArgs):
     module = __import__(moduleName)
+    log.info("InstantiateApplication - Module: " + repr(module))
     classInstance = module.Instantiate(*classArgs)
     log.info( repr(classInstance) )
     return classInstance
@@ -74,19 +75,28 @@ if __name__ == "__main__":
             log.info('Waiting to accept client connection...')
             clientSocket, clientAddress = serverSocket.accept()
 
-            log.info('Got client connection')
-            connection = Connection(clientSocket, clientAddress)
+            try:
+                log.info('Got client connection from %s' % (repr(clientAddress)))
+                connection = Connection(clientSocket, clientAddress)
 
-            if connection.ApplicationPath in applications:
-                if applications[connection.ApplicationPath].AddClient(connection) == True:                
-                    connectionManager.AddConnection(connection)
+                log.info('Client %s requested %s application' % (repr(clientAddress), connection.ApplicationPath))
+                if connection.ApplicationPath in applications:
+                    requestedApp = applications[connection.ApplicationPath]
+                    log.info('Client %s requested app: %s ' % (repr(clientAddress), repr(requestedApp)))
+                    
+                    if requestedApp.AddClient(connection) == True:                
+                        connectionManager.AddConnection(connection)
+                    else:
+                        connection.Close()
+                        connection = None
                 else:
+                    log.info("Client %s requested an unknown Application. Closing connection." % repr(clientAddress))
                     connection.Close()
                     connection = None
-            else:
-                log.info("Client requested an unknown Application. Closing connection.")
-                connection.Close()
-                connection = None
+                    
+            except Exception as ex:
+                log.info('Execption occurred while attempting to establish client connection from %s.' % repr(clientAddress))
+                log.info(repr(ex))
             
     except Exception as ex:
         log.info('Server encountered an unhandled exception.')

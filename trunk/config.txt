@@ -3,6 +3,5 @@ Port=5678
 ConnectionQueueSize=1
 
 [Applications]
-time1=TimeApplication
-time2=TimeApplication
-tictactoe = TicTacToeManagerApplication
+tictactoe=TicTacToeManagerApplication
+

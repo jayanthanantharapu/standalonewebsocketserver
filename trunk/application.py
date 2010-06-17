@@ -1,15 +1,29 @@
 from connection import *
+import datetime
+import traceback
 
 class Application:
-    def __init__(self, name, commandMap={}):
+
+    #
+    #Constructor
+    #
+    def __init__(self, name):
         self.Name = name
+        self.CreationTime = datetime.datetime.utcnow()
+                
+        self.LastTime = self.CreationTime
+        self.DeltaTime = 0
+
+        self.ConnectionTimeout = None
+        
         self.Clients = []
-        self.CommandMap = commandMap
+        self.CommandMap = {}
         #which connection the current command came from
         self.CommandConnectionContext = None
 
+
     def VerifyConnection(self, connection):
-        log.info("Application attempting to verify client...")
+        log.info("Application %s attempting to verify client..." % (self.Name))
         connection.RecvCommands()
         credentials = connection.GetNextCommand()
         log.info("Credentials %s" % (credentials))
@@ -18,11 +32,12 @@ class Application:
 
     #Attempt to verify client. Return True if successful, False otherwise
     def AddClient(self, connection):
-        log.info("Application attempting to add client...")
+        log.info("Application %s attempting to add client..." % (self.Name))
         verified = self.VerifyConnection(connection)
         if verified == True:
             log.info("Connection was verified.")
             self.Clients.append(connection)
+            connection.SetTimeout(self.ConnectionTimeout)
             return True
         else:
             log.info("Connection could not be verified.")
@@ -35,23 +50,25 @@ class Application:
             #Set Connected to False so the connection manager
             #knows to clean up the connection
             connectionObject.Connected = False
-            log.info("Application dropped a client")
+            log.info("Application %s dropped a client" % (self.Name))
             
         except ValueError:
-            log.info("Application tried to drop a client that it wasn't servicing")
+            log.info("Application %s tried to drop a client that it wasn't servicing" % (self.Name))
             pass
 
     #attempt to look up the handler for a command and return the result of running that logic
     def ProcessCommand(self, command):
+        log.info('Application %s processing a client command' % (self.Name))
         parts = command.split('|')
-    
+
+        #log.info('  Command map for %s: %s' % (self.Name, repr(self.CommandMap)))
         if parts[0] in self.CommandMap:
             args = parts[1:]
             result = self.CommandMap[parts[0]](*args)
-            log.info('Command %s returned %s' % (command, result))
+            log.info('%s client Command %s returned %s' % (self.Name, command, result))
             return result
         else:
-            log.info('Unknown command %s' % (command))
+            log.info('%s got an Unknown command %s' % (self.Name, command))
             return None
 
     def Run(self, callback=None):
@@ -82,3 +99,5 @@ class Application:
                 self.RemoveClient(client)                
                 log.info('Application got an exception while servicing a client')
                 log.info(repr(ex))
+                traceback.print_exc()
+
