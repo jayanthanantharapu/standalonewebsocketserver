@@ -57,7 +57,7 @@ class WebSocket:
                     self.Socket.send(HTTP_ORIGIN % self.Origin)                    
                     self.Socket.send(HTTP_LOCATION % (self.Host + self.ApplicationPath))
                     self.Socket.send(HTTP_PROTOCOL)
-                    self.Socket.send(HTTP_CRLF_x2)
+                    self.Socket.send(HTTP_CRLF)
                 
             else:
                 log.info("WebSocket could not parse HTTP header")
