@@ -1,3 +1,23 @@
+##Copyright (c) 2010 Colin Zablocki
+##
+##Permission is hereby granted, free of charge, to any person obtaining a copy
+##of this software and associated documentation files (the "Software"), to deal
+##in the Software without restriction, including without limitation the rights
+##to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+##copies of the Software, and to permit persons to whom the Software is
+##furnished to do so, subject to the following conditions:
+##
+##The above copyright notice and this permission notice shall be included in
+##all copies or substantial portions of the Software.
+##
+##THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+##IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+##FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+##AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+##LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+##OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+##THE SOFTWARE.
+
 import socket
 import logging as log
 import hashlib
@@ -34,6 +54,7 @@ class WebSocket:
         
         try:
             httpHeader = self.Socket.recv(4096)
+            #python 2.6 has issues loggin UTF-8
             print httpHeader
             self.ParseHttpHeader(httpHeader)
             
@@ -109,6 +130,7 @@ class WebSocket:
             securityKey2 = self._ExtractField(header, "Sec-WebSocket-Key2: ")
             securityCode = header[-8:] #Last 8 bytes (64 bits) not including the terminating HTTP \r\n's
 
+            #python 2.6 has issues loggin UTF-8
             print 'Security Request: ', securityCode
             self.SecurityResponse = self._CreateSecurityResponse(securityKey1, securityKey2, securityCode)
 
@@ -152,11 +174,10 @@ class WebSocket:
         if spaceCount > 0:
             secKeyValue = secKeyInts/spaceCount
 
-        print 'debug key: '
-        print key
-        print spaceCount
-        print secKeyInts
-        print secKeyValue
+        log.info('Security Key: ')
+        log.info(' Space count: ' + str(spaceCount))
+        log.info(' Extracted Integers: ' + str(secKeyInts))
+        log.info(' Security Key Value: ' + str(secKeyValue))
         
         return secKeyValue
                 
