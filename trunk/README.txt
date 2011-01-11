@@ -17,5 +17,7 @@ Playing the Tic-Tac-Toe demo
 2)Using a browser that supports web sockets, such as Chrome, open tictactoe.html in two tabs.
 3)In one tab click "Start"
 4)Copy the game GUID that is shown in the logging panel on the right. Paste that into the "join" text field on the other tab and click "Join"
-5)Enjoy some intense Tic-Tac-Toe action!
+
+
+Note that the Tic-Tac-Toe UI is only meant for testing purposes. It does very little error handling, etc.
 
