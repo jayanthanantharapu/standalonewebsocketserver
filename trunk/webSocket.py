@@ -60,12 +60,12 @@ class WebSocket:
                     self.Socket.send(HTTP_CRLF)
                 
             else:
-                log.info("WebSocket could not parse HTTP header")
+                log.warning("WebSocket could not parse HTTP header")
                 raise Exception("WebSocket could not parse HTTP header")
             
         except Exception as ex:
-            log.info("WebSocket could not complete the HTTP handshake to establish a web socket connection")
-            log.info(ex)
+            log.warning("WebSocket could not complete the HTTP handshake to establish a web socket connection")
+            log.warning(ex)
             self.Close()
             raise ex
             #raise Exception("WebSocket could not complete the HTTP handshake to establish a web socket connection")
@@ -87,7 +87,9 @@ class WebSocket:
                 host = header[hostStartIndex + 6 : hostEndIndex]
                 self.Host = host
                 log.info("Host requested by WebSocket connection: %s" % (host))
-
+        else:
+            log.info("Could not find Host header of HTTP request")
+            
         originStartIndex = header.find("Origin: ")
         if originStartIndex != -1:
             originEndIndex = header.find("\r", originStartIndex)
@@ -95,7 +97,9 @@ class WebSocket:
                 origin = header[originStartIndex + 8 : originEndIndex]
                 self.Origin = origin
                 log.info("Origin requested by WebSocket connection: %s" % (origin))
-
+        else:
+            log.info("Could not find Origin header of HTTP request")
+            
         #Web Socket Security protocol
         securityKey1 = self._ExtractField(header, "Sec-WebSocket-Key1: ")
         if securityKey1 != None:
@@ -157,7 +161,7 @@ class WebSocket:
         return secKeyValue
                 
     def Send(self, msg):
-        log.info(u'WebSocket sending data to client: %s' % (repr(msg)))
+        log.debug(u'WebSocket sending data to client: %s' % (repr(msg)))
         self.Socket.send(STARTBYTE + str(msg) + ENDBYTE)
 
     #Will return a (possibly empty) list of commands,
@@ -167,7 +171,7 @@ class WebSocket:
         webSocketCommands = []
         
         try:
-            log.info('WebSocket waiting to receive data from client')
+            log.debug('WebSocket waiting to receive data from client')
             data = self.Socket.recv(4096)
 
             if not data:
@@ -188,17 +192,18 @@ class WebSocket:
                     #strip protocol bytes from front and end of string
                     command = command[1:-1]
                     webSocketCommands.append(command)
-                    log.info(u'WebSocket got command from client: %s' % (repr(command)))
+                    log.debug(u'WebSocket got command from client: %s' % (repr(command)))
                 else:
-                    log.info(u'WebSocket got incorrectly formatted data from client: %s' % (repr(command)))
+                    log.warning(u'WebSocket got incorrectly formatted data from client: %s' % (repr(command)))
 
                 bufferIndex = self.WebSocketBuffer.find(ENDBYTE)
 
-            log.info('WebSocket got data from client: %s' % (repr(webSocketCommands)))
+            log.debug('WebSocket got data from client: %s' % (repr(webSocketCommands)))
             return webSocketCommands
         
         except Exception as ex:
-            log.info("WebSocket got an exception while trying to receive from client socket")
+            log.warning("WebSocket got an exception while trying to receive from client socket:")
+            log.warning(ex)
             return None
 
     def Close(self):

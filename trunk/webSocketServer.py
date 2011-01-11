@@ -11,7 +11,6 @@ import logging as log
 from connection import *
 from connectionManager import *
 
-log.basicConfig(level=log.DEBUG, stream=sys.stderr)
 
 #Dynamically instantiate an instance of an Application-derived class from a module
 #The module must provide an Instantiate() method
@@ -26,11 +25,26 @@ def InstantiateApplication(moduleName, *classArgs):
 #MAIN
 #
 if __name__ == "__main__":
-    log.info('Loading configuration info')
+
     config = ConfigParser.ConfigParser()
     config.read('config.txt')
     port = config.getint('Server', 'Port')
     connectionQueueSize = config.getint('Server', 'ConnectionQueueSize')
+    debugLevel = config.get('Server', 'DebugLevel')
+
+    if debugLevel == 'Debug':
+        debugLevel = log.DEBUG        
+    elif debugLevel == 'Info':
+        debugLevel = log.INFO
+    elif debugLevel == 'Warning':
+        debugLevel = log.WARNING        
+    elif debugLevel == 'Error':
+        debugLevel = log.ERROR
+    else:
+        debugLevel = log.NOTSET
+
+    log.basicConfig(level=debugLevel, stream=sys.stderr)        
+    log.info('Loaded configuration info from config.txt')
 
     #Start applications
     log.info('Loading Applications...')
@@ -83,12 +97,11 @@ if __name__ == "__main__":
                 if connection.ApplicationPath in applications:
                     requestedApp = applications[connection.ApplicationPath]
                     log.info('Client %s requested app: %s ' % (repr(clientAddress), repr(requestedApp)))
-                    
-                    if requestedApp.AddClient(connection) == True:                
-                        connectionManager.AddConnection(connection)
-                    else:
-                        connection.Close()
-                        connection = None
+
+                    connectionManager.AddConnection(connection)
+                    requestedApp.AddPendingClient(connection)
+                    connection.SetTimeout(requestedApp.VerifyTimeout)
+ 
                 else:
                     log.info("Client %s requested an unknown Application. Closing connection." % repr(clientAddress))
                     connection.Close()

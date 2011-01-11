@@ -1,6 +1,7 @@
 [Server]
 Port=5678
 ConnectionQueueSize=1
+DebugLevel=Info
 
 [Applications]
 tictactoe=TicTacToeManagerApplication
